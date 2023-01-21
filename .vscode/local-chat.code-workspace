@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "../local-chat"
+		},
+		{
+			"path": "../frontend"
+		}
+	],
+	"settings": {
+		"java.configuration.updateBuildConfiguration": "interactive",
+		"files.exclude": {
+			"**/android/**": true
+		}
+	}
+}

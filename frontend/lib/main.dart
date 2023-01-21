@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
@@ -59,7 +61,7 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
 
     socket = IO.io(
-        'http://localhost:8080',
+        'http://localhost:8081',
         IO.OptionBuilder()
             .setTransports(['websocket']) // for Flutter or Dart VM;
             .disableAutoConnect() // disable auto-connection
@@ -76,7 +78,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _incrementCounter() {
-    socket.emit('msg', 'sent $_counter');
+    Map<String, dynamic> msg = {'userName': "asd", 'message': "sent $_counter"};
+    socket.emit('message', msg);
     print("sent $_counter");
     setState(() {
       // This call to setState tells the Flutter framework that something has
