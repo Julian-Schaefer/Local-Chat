@@ -2,19 +2,29 @@ package org.sheeper.localchat.chat;
 
 public class ChatMessage {
 
+    private String sender;
     private String receiver;
     private String message;
 
     public ChatMessage() {
     }
 
-    public ChatMessage(String receiver, String message) {
+    public ChatMessage(String sender, String receiver, String message) {
         super();
+        this.sender = sender;
         this.receiver = receiver;
         this.message = message;
     }
 
-    public String getReveicer() {
+    public String getSender() {
+        return sender;
+    }
+
+    public void setSender(String sender) {
+        this.sender = sender;
+    }
+
+    public String getReceiver() {
         return receiver;
     }
 
@@ -33,7 +43,8 @@ public class ChatMessage {
     @Override
     public String toString() {
         return "ChatMessage{" +
-                "receiver='" + receiver + '\'' +
+                "sender='" + sender + '\'' +
+                ", receiver='" + receiver + '\'' +
                 ", message='" + message + '\'' +
                 '}';
     }

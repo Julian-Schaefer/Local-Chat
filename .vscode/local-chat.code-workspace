@@ -9,8 +9,6 @@
 	],
 	"settings": {
 		"java.configuration.updateBuildConfiguration": "interactive",
-		"files.exclude": {
-			"**/android/**": true
-		}
+		"java.compile.nullAnalysis.mode": "automatic"
 	}
 }

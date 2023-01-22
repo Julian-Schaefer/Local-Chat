@@ -1,15 +1,15 @@
 package org.sheeper.localchat.chat;
 
 import com.corundumstudio.socketio.HandshakeData;
-import com.corundumstudio.socketio.SocketIONamespace;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.corundumstudio.socketio.listener.ConnectListener;
 import com.corundumstudio.socketio.listener.DataListener;
 import com.corundumstudio.socketio.listener.DisconnectListener;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,10 +25,10 @@ public class ChatModule {
 
     private final SocketIOServer server;
 
-    private HashMap<String, UUID> connectedUsers = new HashMap<>();
+    private Map<String, UUID> connectedUsers = new ConcurrentHashMap<>();
 
     @Autowired
-    private KafkaTemplate<String, String> kafkaTemplate;
+    private KafkaTemplate<String, ChatMessage> kafkaTemplate;
 
     public ChatModule(SocketIOServer server) {
         this.server = server;
@@ -44,19 +44,21 @@ public class ChatModule {
             client.set("userId", loginMessage.getUserName());
 
             log.debug("Client[{}] - Received chat message '{}'", client.getSessionId().toString(), loginMessage);
-            client.sendEvent("reply", "ok");
+            ackSender.sendAckData("ok");
         };
     }
 
     private DataListener<ChatMessage> onMessageReceived() {
         return (client, chatMessage, ackSender) -> {
-            this.sendMessage("received: " + chatMessage.getMessage());
             if (!client.has("userId")) {
                 return;
             }
 
+            chatMessage.setSender((String) client.get("userId"));
+
             log.debug("Client[{}] - Received chat message '{}'", client.getSessionId().toString(), chatMessage);
-            client.sendEvent("reply", "ok");
+            this.sendMessage(chatMessage);
+            ackSender.sendAckData("ok");
         };
     }
 
@@ -79,12 +81,18 @@ public class ChatModule {
         };
     }
 
-    public void sendMessage(String message) {
+    public void sendMessage(ChatMessage message) {
         this.kafkaTemplate.send("chat", message);
     }
 
     @KafkaListener(topics = "chat")
-    public void consume(String message) throws IOException {
+    public void consume(ChatMessage message) throws IOException {
         log.info(String.format("#### -&gt; Consumed message -&gt; %s", message));
+
+        if (connectedUsers.containsKey(message.getReceiver())) {
+            var uuid = connectedUsers.get(message.getReceiver());
+            var client = server.getClient(uuid);
+            client.sendEvent("message", message);
+        }
     }
 }
