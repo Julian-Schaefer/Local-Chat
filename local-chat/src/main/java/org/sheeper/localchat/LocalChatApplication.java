@@ -8,6 +8,8 @@ import org.springframework.context.annotation.Bean;
 import com.corundumstudio.socketio.Configuration;
 import com.corundumstudio.socketio.SocketConfig;
 import com.corundumstudio.socketio.SocketIOServer;
+import com.corundumstudio.socketio.protocol.JacksonJsonSupport;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 @SpringBootApplication
 public class LocalChatApplication {
@@ -23,6 +25,7 @@ public class LocalChatApplication {
 		Configuration config = new Configuration();
 		config.setHostname(host);
 		config.setPort(port);
+		config.setJsonSupport(new JacksonJsonSupport(new JavaTimeModule()));
 
 		SocketConfig sockConfig = new SocketConfig();
 		sockConfig.setReuseAddress(true);

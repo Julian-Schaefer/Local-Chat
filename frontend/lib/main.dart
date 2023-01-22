@@ -84,8 +84,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
     socket.on('message', (data) {
       setState(() {
-        messages.add("From: ${data['sender']}: ${data['message']}");
+        messages.add("From: ${data[0]['sender']}: ${data[0]['message']}");
       });
+
+      final dataList = data as List;
+      final ack = dataList.last as Function;
+      ack("ok");
     });
   }
 

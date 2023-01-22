@@ -1,5 +1,6 @@
 package org.sheeper.localchat.chat;
 
+import com.corundumstudio.socketio.AckCallback;
 import com.corundumstudio.socketio.HandshakeData;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.corundumstudio.socketio.listener.ConnectListener;
@@ -7,6 +8,7 @@ import com.corundumstudio.socketio.listener.DataListener;
 import com.corundumstudio.socketio.listener.DisconnectListener;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,14 +26,16 @@ public class ChatModule {
     private static final Logger log = LoggerFactory.getLogger(ChatModule.class);
 
     private final SocketIOServer server;
+    private final ChatMessageRepository repository;
 
     private Map<String, UUID> connectedUsers = new ConcurrentHashMap<>();
 
     @Autowired
     private KafkaTemplate<String, ChatMessage> kafkaTemplate;
 
-    public ChatModule(SocketIOServer server) {
+    public ChatModule(SocketIOServer server, ChatMessageRepository repository) {
         this.server = server;
+        this.repository = repository;
         this.server.addConnectListener(onConnected());
         this.server.addDisconnectListener(onDisconnected());
         this.server.addEventListener("login", LoginMessage.class, onLoginReceived());
@@ -55,9 +59,13 @@ public class ChatModule {
             }
 
             chatMessage.setSender((String) client.get("userId"));
+            chatMessage.setDateTime(Instant.now());
 
             log.debug("Client[{}] - Received chat message '{}'", client.getSessionId().toString(), chatMessage);
+
+            repository.save(chatMessage);
             this.sendMessage(chatMessage);
+
             ackSender.sendAckData("ok");
         };
     }
@@ -92,7 +100,18 @@ public class ChatModule {
         if (connectedUsers.containsKey(message.getReceiver())) {
             var uuid = connectedUsers.get(message.getReceiver());
             var client = server.getClient(uuid);
-            client.sendEvent("message", message);
+            client.sendEvent("message", new AckCallback<String>(null) {
+
+                @Override
+                public void onSuccess(String result) {
+                    if (result != null && result.equals("ok")) {
+                        var messageEntity = repository.findByReceiverAndDateTime(message.getReceiver(),
+                                message.getDateTime());
+                        repository.delete(messageEntity);
+                    }
+                }
+
+            }, message);
         }
     }
 }

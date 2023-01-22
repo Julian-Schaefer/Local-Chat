@@ -8,6 +8,15 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
 
+  cassandra:
+    image: cassandra:4.1.0
+    depends_on:
+      - zookeeper
+    ports:
+      - 9042:9042
+    environment:
+      - CASSANDRA_CLUSTER_NAME=local-chat
+
   # reachable on 9092 from the host and on 29092 from inside docker compose
   kafka:
     image: confluentinc/cp-kafka:6.1.9
