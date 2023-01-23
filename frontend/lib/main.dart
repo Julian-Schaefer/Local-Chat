@@ -1,12 +1,15 @@
 // ignore_for_file: avoid_print
-
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'dart:io';
+import 'package:frontend/chat_screen.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:cryptography_flutter/cryptography_flutter.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
-void main() {
+void main() async {
+  FlutterCryptography.enable();
+  await Hive.initFlutter();
+  (await Hive.openBox("chats")).clear();
+
   runApp(const MyApp());
 }
 
@@ -77,6 +80,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
     socket.onConnect((_) {
       print('Connection established');
+      if (userName != null) {
+        Map<String, dynamic> loginMsg = {
+          'userName': userName,
+        };
+        socket.emit("login", loginMsg);
+      }
     });
     socket.onDisconnect((_) => print('Connection Disconnection'));
     socket.onConnectError((err) => print(err));
@@ -186,20 +195,22 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ),
             ),
-            SizedBox(
-              width: 500,
-              height: 500,
-              child: ListView.builder(
-                  padding: const EdgeInsets.all(8),
-                  itemCount: messages.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    return SizedBox(
-                      height: 50,
-                      child: Center(
-                          child: Text('Message $index: ${messages[index]}')),
-                    );
-                  }),
-            )
+            // SizedBox(
+            //   width: 500,
+            //   height: 500,
+            //   child: ListView.builder(
+            //       padding: const EdgeInsets.all(8),
+            //       itemCount: messages.length,
+            //       itemBuilder: (BuildContext context, int index) {
+            //         return SizedBox(
+            //           height: 50,
+            //           child: Center(
+            //               child: Text('Message $index: ${messages[index]}')),
+            //         );
+            //       }),
+            // )
+            const SizedBox(height: 20),
+            const ChatList()
           ],
         ),
       ),
@@ -208,6 +219,71 @@ class _MyHomePageState extends State<MyHomePage> {
         tooltip: 'Send',
         child: const Text('Send'),
       ),
+    );
+  }
+}
+
+class ChatList extends StatefulWidget {
+  const ChatList({super.key});
+
+  @override
+  State<ChatList> createState() => _ChatListState();
+}
+
+class _ChatListState extends State<ChatList> {
+  var number = 0;
+  var chatBox = Hive.box("chats");
+
+  _createChat() async {
+    await chatBox.put(
+      "newchat $number",
+      "newchat $number",
+    );
+
+    number++;
+  }
+
+  _deleteChat(String chat) async {
+    await chatBox.delete(chat);
+  }
+
+  _chatSelected(String chat) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => ChatScreen(chat: chat)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        ElevatedButton(onPressed: _createChat, child: const Text('New Chat')),
+        const SizedBox(height: 20),
+        ValueListenableBuilder<Box>(
+            valueListenable: chatBox.listenable(),
+            builder: (context, box, widget) {
+              return SizedBox(
+                width: 500,
+                height: 500,
+                child: ListView.builder(
+                    itemCount: box.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      var chat = box.getAt(index);
+                      return Card(
+                          child: ListTile(
+                        onTap: () => _chatSelected(chat),
+                        title: Text(chat),
+                        trailing: IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () => _deleteChat(chat)),
+                      ));
+                    }),
+              );
+            }),
+      ],
     );
   }
 }
